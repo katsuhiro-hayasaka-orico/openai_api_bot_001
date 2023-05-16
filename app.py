@@ -24,8 +24,12 @@ def communicate():
         stream=True
     )  
 
-    bot_message = response['choices'][0]['message']
-    messages.append({"role": "assistant", "content": bot_message['content']})
+for response_item in response:
+
+    bot_message = response_item['message']['content']
+    messages.append({"role": "assistant", "content": bot_message})
+
+    break
 
     st.session_state["user_input"] = ""  # 入力欄を消去
 
