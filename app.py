@@ -20,10 +20,11 @@ def communicate():
 
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        messages=messages
+        messages=messages,
+        stream=True
     )  
 
-    bot_message = response["choices"][0]["message"]
+    bot_message = next(response.iter_asynchronous()).message
     messages.append(bot_message)
 
     st.session_state["user_input"] = ""  # 入力欄を消去
