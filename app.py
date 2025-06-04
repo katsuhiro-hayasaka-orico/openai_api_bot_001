@@ -12,6 +12,8 @@ if "messages" not in st.session_state:
 
 # チャットボットとやりとりする関数
 def communicate():
+    """OpenAI APIと対話し、ストリーミングで結果を表示する。"""
+
     messages = st.session_state["messages"]
 
     user_message = {"role": "user", "content": st.session_state["user_input"]}
@@ -20,22 +22,18 @@ def communicate():
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=messages,
-        stream=True  # ストリーミングオプションを有効にする
+        stream=True,  # ストリーミングで受信
     )
 
     result_area = st.empty()  # 結果を表示する空のエリアを作成
-    text = ''  # テキストの初期化
+    text = ""  # テキストの初期化
 
-    for event in response:
-        if event["type"] == "message":
-            bot_message = event["message"]["content"]
-            text += bot_message
-            result_area.write("🤖: " + text)  # テキストを更新して表示
-            
-            messages.append({"role": "assistant", "content": bot_message})
+    for chunk in response:
+        content = chunk["choices"][0]["delta"].get("content", "")
+        text += content
+        result_area.write("🤖: " + text)  # テキストを更新して表示
 
-            if "choices" in event and len(event["choices"]) > 0:
-                break
+    messages.append({"role": "assistant", "content": text})
 
     st.session_state["user_input"] = ""  # 入力欄を消去
 
@@ -43,7 +41,11 @@ def communicate():
 st.title("My AI Assistant")
 st.write("ChatGPT APIを使ったチャットボットです。")
 
-user_input = st.text_input("メッセージを入力してください。", key="user_input", on_change=communicate)
+user_input = st.text_input(
+    "メッセージを入力してください。",
+    key="user_input",
+    on_change=communicate,
+)
 
 if st.session_state["messages"]:
     messages = st.session_state["messages"]
