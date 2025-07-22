@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+
 </title>
 <style>
   body { font-family: sans-serif; text-align: center; background:#222; color:#eee; }
@@ -12,10 +13,12 @@
   .black { background: linear-gradient(#000,#555); }
   .white { background: linear-gradient(#fff,#ccc); }
   #log { max-width:480px; margin:0 auto; text-align:left; background:#333; padding:10px; height:120px; overflow-y:auto; }
+
 </style>
 </head>
 <body>
 <h1>シンプルオセロ</h1>
+
 <div id="controls">
   <select id="mode">
     <option value="hvh">人間vs人間</option>
@@ -78,6 +81,7 @@ function drawBoard(){
       }
     }
   }
+
   const turnStr = currentPlayer===1?'黒':'白';
   infoEl.textContent = `手番: ${turnStr} (${gameMode==='ava'?'AI対戦':gameMode==='hva' && currentPlayer===2?'AI':'人間'})`;
 }
@@ -145,6 +149,7 @@ function countPieces(player){
   }
   return count;
 }
+
 
 function gameOver(){
   return !hasValidMove(1) && !hasValidMove(2);
@@ -266,6 +271,7 @@ startBtn.addEventListener('click', ()=>{
   drawBoard();
   if(gameMode==='ava'){ nextTurn(); }
 });
+
 
 initBoard();
 createBoardUI();
