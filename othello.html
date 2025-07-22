@@ -2,26 +2,49 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>シンプルオセロ</title>
+
+</title>
 <style>
-  body { font-family: sans-serif; text-align: center; }
-  #board { display: grid; grid-template-columns: repeat(8, 60px); grid-template-rows: repeat(8, 60px); margin: 20px auto; }
-  .cell { width: 60px; height: 60px; border: 1px solid #333; background-color: green; position: relative; cursor: pointer; }
-  .piece { border-radius: 50%; width: 50px; height: 50px; position: absolute; top:5px; left:5px; }
-  .black { background: black; }
-  .white { background: white; }
+  body { font-family: sans-serif; text-align: center; background:#222; color:#eee; }
+  #controls { margin: 10px; }
+  #board { display: grid; grid-template-columns: repeat(8, 60px); grid-template-rows: repeat(8, 60px); margin: 20px auto; box-shadow:0 0 10px #000; }
+  .cell { width: 60px; height: 60px; border: 1px solid #333; background: radial-gradient(#185,#0a0); position: relative; cursor: pointer; }
+  .piece { border-radius: 50%; width: 50px; height: 50px; position: absolute; top:5px; left:5px; box-shadow: inset 0 0 5px #000; }
+  .black { background: linear-gradient(#000,#555); }
+  .white { background: linear-gradient(#fff,#ccc); }
+  #log { max-width:480px; margin:0 auto; text-align:left; background:#333; padding:10px; height:120px; overflow-y:auto; }
+
 </style>
 </head>
 <body>
 <h1>シンプルオセロ</h1>
+
+<div id="controls">
+  <select id="mode">
+    <option value="hvh">人間vs人間</option>
+    <option value="hva">人間vsAI</option>
+    <option value="ava">AI vs AI</option>
+  </select>
+  <button id="start">新規ゲーム</button>
+</div>
 <div id="info"></div>
 <div id="board"></div>
+<p style="max-width:480px;margin:10px auto;">
+AIはミニマックス探索とαβ枝刈りを用いて手を計算します。
+評価関数では石の数差に加え、角を取ることを高く評価します。
+</p>
+<div id="log"></div>
 <script>
 const boardEl = document.getElementById('board');
 const infoEl = document.getElementById('info');
+const modeEl = document.getElementById('mode');
+const startBtn = document.getElementById('start');
+const logEl = document.getElementById('log');
 const size = 8;
 let board = [];
 let currentPlayer = 1; //1:black, 2:white
+let gameMode = 'hvh';
+let aiThinking = false;
 
 function initBoard() {
   board = Array.from({length:size}, () => Array(size).fill(0));
@@ -58,22 +81,19 @@ function drawBoard(){
       }
     }
   }
-  infoEl.textContent = '手番: ' + (currentPlayer===1?'黒':'白');
+
+  const turnStr = currentPlayer===1?'黒':'白';
+  infoEl.textContent = `手番: ${turnStr} (${gameMode==='ava'?'AI対戦':gameMode==='hva' && currentPlayer===2?'AI':'人間'})`;
 }
 
 function onCellClick(e){
+  if(gameMode==='ava') return;
+  if(gameMode==='hva' && currentPlayer===2) return;
   const r = parseInt(e.currentTarget.dataset.row);
   const c = parseInt(e.currentTarget.dataset.col);
   if(playMove(r,c,currentPlayer)){
-    currentPlayer = 3 - currentPlayer; //switch player
-    if(!hasValidMove(currentPlayer)){
-      currentPlayer = 3 - currentPlayer; //skip turn
-      if(!hasValidMove(currentPlayer)){
-        alert('ゲーム終了! 黒:' + countPieces(1) + ' 白:' + countPieces(2));
-        initBoard();
-      }
-    }
-    drawBoard();
+    currentPlayer = 3 - currentPlayer;
+    nextTurn();
   }
 }
 
@@ -129,6 +149,129 @@ function countPieces(player){
   }
   return count;
 }
+
+
+function gameOver(){
+  return !hasValidMove(1) && !hasValidMove(2);
+}
+
+function cloneBoard(src){
+  return src.map(row=>row.slice());
+}
+
+function getValidMoves(b, player){
+  const moves=[];
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      if(b[r][c]===0 && isValidForBoard(b,r,c,player)) moves.push([r,c]);
+    }
+  }
+  return moves;
+}
+
+function isValidForBoard(b,r,c,player){
+  if(b[r][c]!==0) return false;
+  for(const [dr,dc] of dirs){
+    let rr=r+dr, cc=c+dc, found=false;
+    while(rr>=0&&rr<size&&cc>=0&&cc<size&&b[rr][cc]===3-player){ rr+=dr; cc+=dc; found=true; }
+    if(found && rr>=0&&rr<size&&cc>=0&&cc<size&&b[rr][cc]===player){ return true; }
+  }
+  return false;
+}
+
+function applyMove(b,r,c,player){
+  b[r][c]=player;
+  for(const [dr,dc] of dirs){
+    let rr=r+dr, cc=c+dc, captured=[];
+    while(rr>=0&&rr<size&&cc>=0&&cc<size&&b[rr][cc]===3-player){ captured.push([rr,cc]); rr+=dr; cc+=dc; }
+    if(captured.length>0 && rr>=0&&rr<size&&cc>=0&&cc<size&&b[rr][cc]===player){ for(const [cr,ccp] of captured){ b[cr][ccp]=player; } }
+  }
+}
+
+function evaluateBoard(b, player){
+  let other=3-player;
+  let diff=countPiecesBoard(b,player)-countPiecesBoard(b,other);
+  let score=diff;
+  const corners=[[0,0],[0,7],[7,0],[7,7]];
+  for(const [r,c] of corners){
+    if(b[r][c]===player) score+=25; else if(b[r][c]===other) score-=25;
+  }
+  return score;
+}
+
+function countPiecesBoard(b,player){
+  let cnt=0;
+  for(let r=0;r<size;r++) for(let c=0;c<size;c++) if(b[r][c]===player) cnt++;
+  return cnt;
+}
+
+function minimax(b, depth, alpha, beta, player, me){
+  if(depth===0 || gameOverBoard(b)) return {score:evaluateBoard(b, me)};
+  const moves=getValidMoves(b, player);
+  if(moves.length===0) return minimax(b, depth, alpha, beta, 3-player, me);
+  let best=null;
+  if(player===me){
+    let bestScore=-Infinity; let bestMove=null;
+    for(const [r,c] of moves){
+      const nb=cloneBoard(b); applyMove(nb,r,c,player);
+      const res=minimax(nb, depth-1, alpha, beta, 3-player, me);
+      if(res.score>bestScore){ bestScore=res.score; bestMove=[r,c]; }
+      alpha=Math.max(alpha, bestScore); if(beta<=alpha) break;
+    }
+    return {move:bestMove, score:bestScore};
+  } else {
+    let bestScore=Infinity; let bestMove=null;
+    for(const [r,c] of moves){
+      const nb=cloneBoard(b); applyMove(nb,r,c,player);
+      const res=minimax(nb, depth-1, alpha, beta, 3-player, me);
+      if(res.score<bestScore){ bestScore=res.score; bestMove=[r,c]; }
+      beta=Math.min(beta, bestScore); if(beta<=alpha) break;
+    }
+    return {move:bestMove, score:bestScore};
+  }
+}
+
+function gameOverBoard(b){
+  for(let p=1;p<=2;p++){ if(getValidMoves(b,p).length>0) return false; }
+  return true;
+}
+
+function aiMove(player){
+  aiThinking=true;
+  const {move, score}=minimax(cloneBoard(board), 3, -Infinity, Infinity, player, player);
+  let logMsg='AI '+(player===1?'黒':'白')+' 手'+(move?`(${move[0]+1},${move[1]+1}) 評価:${score}`:'パス');
+  logEl.textContent=logMsg+'\n'+logEl.textContent;
+  if(move) playMove(move[0],move[1],player);
+  aiThinking=false;
+}
+
+function nextTurn(){
+  drawBoard();
+  if(!hasValidMove(currentPlayer)){
+    currentPlayer=3-currentPlayer;
+    if(!hasValidMove(currentPlayer)){
+      alert('ゲーム終了! 黒:'+countPieces(1)+' 白:'+countPieces(2));
+      return;
+    }
+  }
+  if(gameOver()){
+    alert('ゲーム終了! 黒:'+countPieces(1)+' 白:'+countPieces(2));
+    return;
+  }
+  if(gameMode==='ava' || (gameMode==='hva' && currentPlayer===2)){
+    setTimeout(()=>{ aiMove(currentPlayer); currentPlayer=3-currentPlayer; nextTurn(); }, 300);
+  }
+}
+
+startBtn.addEventListener('click', ()=>{
+  gameMode=modeEl.value;
+  initBoard();
+  currentPlayer=1;
+  logEl.textContent='';
+  drawBoard();
+  if(gameMode==='ava'){ nextTurn(); }
+});
+
 
 initBoard();
 createBoardUI();
