@@ -26,16 +26,19 @@ def communicate():
     result_area = st.empty()  # 結果を表示する空のエリアを作成
     text = ''  # テキストの初期化
 
-    for event in response:
-        if event["type"] == "message":
-            bot_message = event["message"]["content"]
+    for chunk in response:
+        if (
+            chunk.choices and
+            chunk.choices[0].delta and
+            chunk.choices[0].delta.content is not None
+        ):
+            bot_message = chunk.choices[0].delta.content
             text += bot_message
             result_area.write("🤖: " + text)  # テキストを更新して表示
-            
             messages.append({"role": "assistant", "content": bot_message})
 
-            if "choices" in event and len(event["choices"]) > 0:
-                break
+        if chunk.choices and chunk.choices[0].finish_reason is not None:
+            break
 
     st.session_state["user_input"] = ""  # 入力欄を消去
 

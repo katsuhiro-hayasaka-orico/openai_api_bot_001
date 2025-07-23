@@ -99,10 +99,12 @@ function saveData(data){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+
 function buildRegex(keyword){
   const terms = keyword.trim().split(/\s+/).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
   return new RegExp(terms.join('|'), 'i');
 }
+
 
 function searchAnswers(keyword){
   const data = loadData();
@@ -111,6 +113,7 @@ function searchAnswers(keyword){
   const matches = data.filter(item => regex.test(item.question) || regex.test(item.answer));
   matches.sort((a,b)=>b.timestamp-a.timestamp);
   return matches;
+
 }
 
 function renderList(){
@@ -120,10 +123,13 @@ function renderList(){
   container.innerHTML='';
   const grouped = {};
   for(const item of data){
+
+    
     if(filter){
       const regex = buildRegex(filter);
       if(!regex.test(item.question) && !regex.test(item.answer)) continue;
     }
+   
     if(!grouped[item.question]) grouped[item.question]=[];
     grouped[item.question].push(item);
   }
@@ -149,6 +155,7 @@ function renderList(){
 
 document.getElementById('askBtn').addEventListener('click',()=>{
   const q = document.getElementById('askInput').value.trim();
+
   const results = searchAnswers(q);
   const area = document.getElementById('answerArea');
   area.innerHTML = '';
@@ -159,6 +166,7 @@ document.getElementById('askBtn').addEventListener('click',()=>{
       p.textContent = `${dt}: ${item.answer}`;
       area.appendChild(p);
     });
+
   }else{
     area.textContent = '未回答';
   }
