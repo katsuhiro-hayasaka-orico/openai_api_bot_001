@@ -99,10 +99,16 @@ function saveData(data){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+function buildRegex(keyword){
+  const terms = keyword.trim().split(/\s+/).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+  return new RegExp(terms.join('|'), 'i');
+}
+
 function searchAnswer(keyword){
   const data = loadData();
   if(!keyword) return null;
-  const matches = data.filter(item => item.question.includes(keyword));
+  const regex = buildRegex(keyword);
+  const matches = data.filter(item => regex.test(item.question) || regex.test(item.answer));
   if(matches.length>0){
     matches.sort((a,b)=>b.timestamp-a.timestamp);
     return matches[0];
@@ -117,7 +123,10 @@ function renderList(){
   container.innerHTML='';
   const grouped = {};
   for(const item of data){
-    if(filter && !item.question.includes(filter) && !item.answer.includes(filter)) continue;
+    if(filter){
+      const regex = buildRegex(filter);
+      if(!regex.test(item.question) && !regex.test(item.answer)) continue;
+    }
     if(!grouped[item.question]) grouped[item.question]=[];
     grouped[item.question].push(item);
   }
