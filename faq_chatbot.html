@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FAQチャットボット</title>
+  <style>
+    :root {
+      --primary: #2c7be5;
+      --bg: #f4f6f9;
+      --card-bg: #fff;
+      --radius: 6px;
+    }
+    body {font-family: system-ui, sans-serif;background:var(--bg);margin:0;padding:20px;color:#333;}
+    h1{text-align:center;color:var(--primary);}
+    .container{max-width:800px;margin:0 auto;}
+    section{background:var(--card-bg);border-radius:var(--radius);box-shadow:0 2px 6px rgba(0,0,0,0.1);padding:20px;margin-bottom:30px;}
+    label{display:block;margin-top:10px;}
+    input,textarea{width:100%;padding:8px;margin-top:5px;border:1px solid #ccc;border-radius:var(--radius);box-sizing:border-box;}
+    button{margin-top:10px;padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;}
+    button:hover{opacity:.9;}
+    .qa-item{margin-bottom:15px;}
+    .answers{margin-left:20px;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// --- Mini React Runtime ---
+(function(){
+  function createElement(type, props, ...children){
+    return {type, props: props||{}, children};
+  }
+  function setProps(dom, props){
+    for(const k in props){
+      if(k.startsWith('on')) dom.addEventListener(k.slice(2).toLowerCase(), props[k]);
+      else if(k==='style'&&typeof props[k]==='object') Object.assign(dom.style, props[k]);
+      else if(k!=='children') dom.setAttribute(k, props[k]);
+    }
+  }
+  function render(vnode, container){
+    container.innerHTML='';
+    container.appendChild(_render(vnode));
+  }
+  function _render(v){
+    if(typeof v==='string'||typeof v==='number') return document.createTextNode(v);
+    if(typeof v.type==='function'){
+      const comp={hooks:[],hookIndex:0,vnode:v};
+      current=comp;
+      const child=v.type(v.props||{});
+      const dom=_render(child);
+      current=null;
+      comp.dom=dom;
+      return dom;
+    }
+    const dom=document.createElement(v.type);
+    setProps(dom,v.props||{});
+    (v.children||[]).forEach(c=>dom.appendChild(_render(c)));
+    return dom;
+  }
+  let current=null;
+  function useState(init){
+    const c=current;
+    const i=c.hookIndex++;
+    if(c.hooks[i]===undefined) c.hooks[i]=init;
+    const set=v=>{
+      c.hooks[i]=typeof v==='function'?v(c.hooks[i]):v;
+      const newDom=_render(c.vnode.type(c.vnode.props));
+      c.dom.replaceWith(newDom);
+      c.dom=newDom;
+    };
+    return [c.hooks[i], set];
+  }
+  window.React={createElement,useState};
+  window.ReactDOM={render};
+})();
+// --- Application Logic ---
+const STORAGE_KEY='faqData';
+const {createElement:h,useState}=React;
+function loadData(){const d=localStorage.getItem(STORAGE_KEY);return d?JSON.parse(d):[];}
+function saveData(d){localStorage.setItem(STORAGE_KEY,JSON.stringify(d));}
+function buildRegex(k){const t=k.trim().split(/\s+/).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));return new RegExp(t.join('|'),'i');}
+function searchAnswers(k,data){if(!k)return[];const r=buildRegex(k);return data.filter(it=>r.test(it.question)||r.test(it.answer)).sort((a,b)=>b.timestamp-a.timestamp);}
+function App(){
+  const [ask,setAsk]=useState('');
+  const [results,setResults]=useState([]);
+  const [q,setQ]=useState('');
+  const [a,setA]=useState('');
+  const [filter,setFilter]=useState('');
+  const [data,setData]=useState(loadData());
+
+  function doSearch(){setResults(searchAnswers(ask,data));}
+  function doRegister(){
+    if(!q||!a)return;
+    const newData=[...data,{question:q,answer:a,timestamp:Date.now()}];
+    setData(newData);saveData(newData);setQ('');setA('');renderList(newData);
+  }
+  function renderList(d){/* no-op for hooks */}
+
+  return h('div',{class:'container'},
+    h('h1',null,'FAQチャットボット（React版）'),
+    h('section',{id:'chat'},
+      h('h2',null,'質問検索'),
+      h('input',{type:'text',value:ask,oninput:e=>setAsk(e.target.value),placeholder:'質問を入力'}),
+      h('button',{onclick:doSearch},'検索'),
+      h('div',{id:'answerArea'},results.length?results.map(it=>h('p',null,new Date(it.timestamp).toLocaleString()+': '+it.answer)):'未回答')
+    ),
+    h('section',{id:'register'},
+      h('h2',null,'回答登録'),
+      h('label',null,'質問:',h('input',{type:'text',value:q,oninput:e=>setQ(e.target.value)})),
+      h('label',null,'回答:',h('textarea',{rows:3,value:a,oninput:e=>setA(e.target.value)})),
+      h('button',{onclick:doRegister},'登録')
+    ),
+    h('section',{id:'knowledge'},
+      h('h2',null,'ナレッジ一覧'),
+      h('input',{type:'text',value:filter,oninput:e=>setFilter(e.target.value),placeholder:'キーワード検索'}),
+      h('div',null,groupedView(data,filter))
+    )
+  );
+}
+function groupedView(data,filter){
+  const g={};
+  data.forEach(it=>{const k=it.question;(g[k]=g[k]||[]).push(it);});
+  const regex=filter?buildRegex(filter):null;
+  const out=[];
+  for(const q in g){
+    const items=regex?g[q].filter(it=>regex.test(it.question)||regex.test(it.answer)):g[q];
+    if(!items.length)continue;
+    items.sort((a,b)=>a.timestamp-b.timestamp);
+    out.push(React.createElement('div',{class:'qa-item'},
+      React.createElement('strong',null,q),
+      React.createElement('div',{class:'answers'},
+        ...items.map(it=>React.createElement('p',null,new Date(it.timestamp).toLocaleString()+': '+it.answer))
+      )
+    ));
+  }
+  return out.length?out:'登録なし';
+}
+ReactDOM.render(React.createElement(App),document.getElementById('root'));
+</script>
+</body>
+</html>
