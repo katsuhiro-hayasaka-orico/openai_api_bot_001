@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ローカルFAQチャットボット</title>
+  <style>
+    :root {
+      --primary: #2c7be5;
+      --bg: #f4f6f9;
+      --card-bg: #fff;
+      --border-radius: 6px;
+    }
+    body {
+      font-family: system-ui, sans-serif;
+      background-color: var(--bg);
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: var(--primary);
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    section {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    label {display:block;margin-top:10px;}
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top:5px;
+      border: 1px solid #ccc;
+      border-radius: var(--border-radius);
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+    }
+    button:hover {opacity: .9;}
+    #answerArea {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    .qa-item {margin-bottom:15px;}
+    .answers {margin-left:20px;}
+  </style>
+</head>
+<body>
+<div class="container">
+<h1>FAQチャットボット（ローカル版）</h1>
+
+<section id="chat">
+  <h2>質問検索</h2>
+  <input type="text" id="askInput" placeholder="質問を入力" />
+  <button id="askBtn">検索</button>
+  <div id="answerArea"></div>
+</section>
+
+<section id="register">
+  <h2>回答登録</h2>
+  <label>質問:<input type="text" id="qInput"></label>
+  <label>回答:<textarea id="aInput" rows="3"></textarea></label>
+  <button id="regBtn">登録</button>
+  <div id="regMsg"></div>
+</section>
+
+<section id="knowledge">
+  <h2>ナレッジ一覧</h2>
+  <input type="text" id="searchInput" placeholder="キーワード検索" />
+  <div id="list"></div>
+</section>
+</div>
+<script>
+const STORAGE_KEY = 'faqData';
+
+function loadData(){
+  const d = localStorage.getItem(STORAGE_KEY);
+  return d ? JSON.parse(d) : [];
+}
+
+function saveData(data){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function searchAnswer(keyword){
+  const data = loadData();
+  if(!keyword) return null;
+  const matches = data.filter(item => item.question.includes(keyword));
+  if(matches.length>0){
+    matches.sort((a,b)=>b.timestamp-a.timestamp);
+    return matches[0];
+  }
+  return null;
+}
+
+function renderList(){
+  const data = loadData();
+  const filter = document.getElementById('searchInput').value.trim();
+  const container = document.getElementById('list');
+  container.innerHTML='';
+  const grouped = {};
+  for(const item of data){
+    if(filter && !item.question.includes(filter) && !item.answer.includes(filter)) continue;
+    if(!grouped[item.question]) grouped[item.question]=[];
+    grouped[item.question].push(item);
+  }
+  for(const question in grouped){
+    const div = document.createElement('div');
+    div.className='qa-item';
+    const qTitle = document.createElement('strong');
+    qTitle.textContent = question;
+    div.appendChild(qTitle);
+    const ansDiv = document.createElement('div');
+    ansDiv.className='answers';
+    grouped[question].sort((a,b)=>a.timestamp-b.timestamp);
+    grouped[question].forEach(item=>{
+      const p = document.createElement('p');
+      const dt = new Date(item.timestamp).toLocaleString();
+      p.textContent = `${dt}: ${item.answer}`;
+      ansDiv.appendChild(p);
+    });
+    div.appendChild(ansDiv);
+    container.appendChild(div);
+  }
+}
+
+document.getElementById('askBtn').addEventListener('click',()=>{
+  const q = document.getElementById('askInput').value.trim();
+  const result = searchAnswer(q);
+  const area = document.getElementById('answerArea');
+  if(result){
+    area.textContent = '回答: '+result.answer;
+  }else{
+    area.textContent = '未回答';
+  }
+});
+
+
+document.getElementById('regBtn').addEventListener('click',()=>{
+  const q = document.getElementById('qInput').value.trim();
+  const a = document.getElementById('aInput').value.trim();
+  const msg = document.getElementById('regMsg');
+  if(!q || !a){
+    msg.textContent = '質問と回答を入力してください';
+    return;
+  }
+  const data = loadData();
+  data.push({question:q, answer:a, timestamp:Date.now()});
+  saveData(data);
+  msg.textContent = '登録しました';
+  document.getElementById('qInput').value='';
+  document.getElementById('aInput').value='';
+  renderList();
+});
+
+document.getElementById('searchInput').addEventListener('input',renderList);
+window.addEventListener('load',renderList);
+</script>
+</body>
+</html>
