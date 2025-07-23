@@ -105,17 +105,15 @@ function buildRegex(keyword){
   return new RegExp(terms.join('|'), 'i');
 }
 
-function searchAnswer(keyword){
+
+function searchAnswers(keyword){
   const data = loadData();
-  if(!keyword) return null;
+  if(!keyword) return [];
   const regex = buildRegex(keyword);
   const matches = data.filter(item => regex.test(item.question) || regex.test(item.answer));
+  matches.sort((a,b)=>b.timestamp-a.timestamp);
+  return matches;
 
-  if(matches.length>0){
-    matches.sort((a,b)=>b.timestamp-a.timestamp);
-    return matches[0];
-  }
-  return null;
 }
 
 function renderList(){
@@ -126,11 +124,12 @@ function renderList(){
   const grouped = {};
   for(const item of data){
 
+    
     if(filter){
       const regex = buildRegex(filter);
       if(!regex.test(item.question) && !regex.test(item.answer)) continue;
     }
-
+   
     if(!grouped[item.question]) grouped[item.question]=[];
     grouped[item.question].push(item);
   }
@@ -156,10 +155,18 @@ function renderList(){
 
 document.getElementById('askBtn').addEventListener('click',()=>{
   const q = document.getElementById('askInput').value.trim();
-  const result = searchAnswer(q);
+
+  const results = searchAnswers(q);
   const area = document.getElementById('answerArea');
-  if(result){
-    area.textContent = '回答: '+result.answer;
+  area.innerHTML = '';
+  if(results.length>0){
+    results.forEach(item => {
+      const p = document.createElement('p');
+      const dt = new Date(item.timestamp).toLocaleString();
+      p.textContent = `${dt}: ${item.answer}`;
+      area.appendChild(p);
+    });
+
   }else{
     area.textContent = '未回答';
   }
