@@ -25,6 +25,12 @@ data = load_data()
 app = FastAPI(title="FAQ Prototype")
 
 
+@app.get("/")
+def root():
+    """Root endpoint for health checks."""
+    return {"message": "FAQ API is running"}
+
+
 class Question(BaseModel):
     text: str
     tags: List[str] = []
