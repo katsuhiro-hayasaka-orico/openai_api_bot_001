@@ -79,6 +79,9 @@ tr:nth-child(even){background:#f2f2f2;}
     <label>年月
         <input type="month" id="monthSelect">
     </label>
+    <label>日付
+        <input type="date" id="logDate">
+    </label>
     <label>所属会社
         <input type="text" id="company" required>
     </label>
@@ -99,9 +102,11 @@ tr:nth-child(even){background:#f2f2f2;}
     </label>
     <label>入室時間
         <input type="time" id="inTime">
+        <button type="button" id="stampIn">現在時刻</button>
     </label>
     <label>退出時間
         <input type="time" id="outTime">
+        <button type="button" id="stampOut">現在時刻</button>
     </label>
     <button type="submit">追加</button>
 </form>
@@ -110,6 +115,7 @@ tr:nth-child(even){background:#f2f2f2;}
 <table id="logTable">
     <thead>
         <tr>
+            <th>日付</th>
             <th>所属会社</th>
             <th>名前</th>
             <th>人数</th>
@@ -127,8 +133,11 @@ tr:nth-child(even){background:#f2f2f2;}
 <script>
 const STORAGE_KEY='visitorLogData';
 const monthSelect=document.getElementById('monthSelect');
+const logDate=document.getElementById('logDate');
 const form=document.getElementById('entryForm');
 const tbody=document.querySelector('#logTable tbody');
+const stampIn=document.getElementById('stampIn');
+const stampOut=document.getElementById('stampOut');
 
 function getData(){
     const raw=localStorage.getItem(STORAGE_KEY);
@@ -153,7 +162,7 @@ function loadMonth(){
 
 function addRow(record){
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${record.company}</td><td>${record.name}</td><td>${record.count}</td><td>${record.purpose||''}</td><td>${record.department||''}</td><td>${record.contact||''}</td><td>${record.inTime||''}</td><td>${record.outTime||''}</td>`;
+    tr.innerHTML=`<td>${record.date||''}</td><td>${record.company}</td><td>${record.name}</td><td>${record.count}</td><td>${record.purpose||''}</td><td>${record.department||''}</td><td>${record.contact||''}</td><td>${record.inTime||''}</td><td>${record.outTime||''}</td>`;
     tbody.appendChild(tr);
 }
 
@@ -166,6 +175,7 @@ form.addEventListener('submit',e=>{
         purpose:form.purpose.value.trim(),
         department:form.department.value.trim(),
         contact:form.contact.value.trim(),
+        date:form.logDate.value,
         inTime:form.inTime.value,
         outTime:form.outTime.value
     };
@@ -180,6 +190,15 @@ form.addEventListener('submit',e=>{
 
 monthSelect.addEventListener('change',loadMonth);
 monthSelect.value=new Date().toISOString().slice(0,7);
+logDate.value=new Date().toISOString().slice(0,10);
+stampIn.addEventListener('click',()=>{
+    const t=new Date().toTimeString().slice(0,5);
+    form.inTime.value=t;
+});
+stampOut.addEventListener('click',()=>{
+    const t=new Date().toTimeString().slice(0,5);
+    form.outTime.value=t;
+});
 document.getElementById("printDate").textContent = new Date().toLocaleDateString();
 loadMonth();
 </script>
