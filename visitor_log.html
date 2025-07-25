@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>来訪者受付台帳</title>
+<style>
+body{
+    font-family:"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    margin:0;
+    padding:20px;
+    background:#f5f7fa;
+}
+main{
+    max-width:1000px;
+    margin:auto;
+    background:#fff;
+    padding:20px;
+    border-radius:8px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+header{
+    background:#2c3e50;
+    color:#fff;
+    padding:10px 20px;
+    margin-bottom:20px;
+    border-radius:8px 8px 0 0;
+    text-align:center;
+}
+h1{margin:0;font-size:24px;}
+form{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:20px;
+}
+label{
+    display:flex;
+    flex-direction:column;
+    font-size:14px;
+    flex:1 0 120px;
+}
+input,select{
+    padding:6px;
+    font-size:14px;
+    border:1px solid #ccc;
+    border-radius:4px;
+}
+button{
+    padding:6px 12px;
+    font-size:14px;
+    background:#3498db;
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    cursor:pointer;
+}
+button:hover{background:#2980b9;}
+table{width:100%;border-collapse:collapse;}
+th,td{border:1px solid #ccc;padding:6px 8px;font-size:14px;}
+th{background:#2c3e50;color:#fff;}
+tr:nth-child(even){background:#f2f2f2;}
+.no-print button{margin-top:10px;}
+@page{size:A4 landscape;margin:20mm;}
+@media print{
+    body{margin:20mm;font-size:12px;background:#fff;}
+    main{box-shadow:none;padding:0;}
+    header{position:fixed;top:0;left:0;right:0;border-bottom:1px solid #000;border-radius:0;}
+    footer{position:fixed;bottom:0;left:0;right:0;text-align:right;padding:5px;font-size:12px;}
+    footer::after{content:"Page " counter(page);}
+    .no-print{display:none;}
+}
+</style>
+</head>
+<body>
+<header><h1>来訪者受付台帳</h1><div id="printDate"></div></header>
+<main>
+<div class="no-print">
+<form id="entryForm">
+    <label>年月
+        <input type="month" id="monthSelect">
+    </label>
+    <label>所属会社
+        <input type="text" id="company" required>
+    </label>
+    <label>名前
+        <input type="text" id="name" required>
+    </label>
+    <label>訪問人数
+        <input type="number" id="count" min="1" value="1" required>
+    </label>
+    <label>目的
+        <input type="text" id="purpose">
+    </label>
+    <label>訪問先部署
+        <input type="text" id="department">
+    </label>
+    <label>訪問先担当者
+        <input type="text" id="contact">
+    </label>
+    <label>入室時間
+        <input type="time" id="inTime">
+    </label>
+    <label>退出時間
+        <input type="time" id="outTime">
+    </label>
+    <button type="submit">追加</button>
+</form>
+<button onclick="window.print()" class="no-print">印刷/PDF</button>
+</div>
+<table id="logTable">
+    <thead>
+        <tr>
+            <th>所属会社</th>
+            <th>名前</th>
+            <th>人数</th>
+            <th>目的</th>
+            <th>訪問先部署</th>
+            <th>訪問先担当者</th>
+            <th>入室時間</th>
+            <th>退出時間</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+</main>
+<footer id="pageFooter"></footer>
+<script>
+const STORAGE_KEY='visitorLogData';
+const monthSelect=document.getElementById('monthSelect');
+const form=document.getElementById('entryForm');
+const tbody=document.querySelector('#logTable tbody');
+
+function getData(){
+    const raw=localStorage.getItem(STORAGE_KEY);
+    return raw?JSON.parse(raw):{};
+}
+
+function saveData(data){
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
+}
+
+function currentMonth(){
+    return monthSelect.value || new Date().toISOString().slice(0,7);
+}
+
+function loadMonth(){
+    tbody.innerHTML='';
+    const data=getData();
+    const month=currentMonth();
+    const records=data[month]||[];
+    records.forEach(r=>addRow(r));
+}
+
+function addRow(record){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${record.company}</td><td>${record.name}</td><td>${record.count}</td><td>${record.purpose||''}</td><td>${record.department||''}</td><td>${record.contact||''}</td><td>${record.inTime||''}</td><td>${record.outTime||''}</td>`;
+    tbody.appendChild(tr);
+}
+
+form.addEventListener('submit',e=>{
+    e.preventDefault();
+    const record={
+        company:form.company.value.trim(),
+        name:form.name.value.trim(),
+        count:form.count.value,
+        purpose:form.purpose.value.trim(),
+        department:form.department.value.trim(),
+        contact:form.contact.value.trim(),
+        inTime:form.inTime.value,
+        outTime:form.outTime.value
+    };
+    addRow(record);
+    const data=getData();
+    const month=currentMonth();
+    if(!data[month]) data[month]=[];
+    data[month].push(record);
+    saveData(data);
+    form.reset();
+});
+
+monthSelect.addEventListener('change',loadMonth);
+monthSelect.value=new Date().toISOString().slice(0,7);
+document.getElementById("printDate").textContent = new Date().toLocaleDateString();
+loadMonth();
+</script>
+</body>
+</html>
