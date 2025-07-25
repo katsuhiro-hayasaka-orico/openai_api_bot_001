@@ -76,11 +76,8 @@ tr:nth-child(even){background:#f2f2f2;}
 <main>
 <div class="no-print">
 <form id="entryForm">
-    <label>年月
-        <input type="month" id="monthSelect">
-    </label>
-    <label>日付
-        <input type="date" id="logDate">
+<label>日付
+        <input type="date" id="dateSelect">
     </label>
     <label>所属会社
         <input type="text" id="company" required>
@@ -111,6 +108,7 @@ tr:nth-child(even){background:#f2f2f2;}
     <button type="submit">追加</button>
 </form>
 <button onclick="window.print()" class="no-print">印刷/PDF</button>
+<button type="button" id="exportCSV" class="no-print">CSV出力</button>
 </div>
 <table id="logTable">
     <thead>
@@ -132,8 +130,7 @@ tr:nth-child(even){background:#f2f2f2;}
 <footer id="pageFooter"></footer>
 <script>
 const STORAGE_KEY='visitorLogData';
-const monthSelect=document.getElementById('monthSelect');
-const logDate=document.getElementById('logDate');
+const dateSelect=document.getElementById('dateSelect');
 const form=document.getElementById('entryForm');
 const tbody=document.querySelector('#logTable tbody');
 const stampIn=document.getElementById('stampIn');
@@ -148,15 +145,15 @@ function saveData(data){
     localStorage.setItem(STORAGE_KEY,JSON.stringify(data));
 }
 
-function currentMonth(){
-    return monthSelect.value || new Date().toISOString().slice(0,7);
+function currentDate(){
+    return dateSelect.value || new Date().toISOString().slice(0,10);
 }
 
-function loadMonth(){
+function loadDate(){
     tbody.innerHTML='';
     const data=getData();
-    const month=currentMonth();
-    const records=data[month]||[];
+    const date=currentDate();
+    const records=data[date]||[];
     records.forEach(r=>addRow(r));
 }
 
@@ -175,22 +172,21 @@ form.addEventListener('submit',e=>{
         purpose:form.purpose.value.trim(),
         department:form.department.value.trim(),
         contact:form.contact.value.trim(),
-        date:form.logDate.value,
+        date:currentDate(),
         inTime:form.inTime.value,
         outTime:form.outTime.value
     };
     addRow(record);
     const data=getData();
-    const month=currentMonth();
-    if(!data[month]) data[month]=[];
-    data[month].push(record);
+    const date=currentDate();
+    if(!data[date]) data[date]=[];
+    data[date].push(record);
     saveData(data);
     form.reset();
 });
 
-monthSelect.addEventListener('change',loadMonth);
-monthSelect.value=new Date().toISOString().slice(0,7);
-logDate.value=new Date().toISOString().slice(0,10);
+dateSelect.addEventListener('change',loadDate);
+dateSelect.value=new Date().toISOString().slice(0,10);
 stampIn.addEventListener('click',()=>{
     const t=new Date().toTimeString().slice(0,5);
     form.inTime.value=t;
@@ -199,8 +195,24 @@ stampOut.addEventListener('click',()=>{
     const t=new Date().toTimeString().slice(0,5);
     form.outTime.value=t;
 });
+document.getElementById('exportCSV').addEventListener('click',()=>{
+    const data=getData();
+    const date=currentDate();
+    const records=data[date]||[];
+    let csv='日付,所属会社,名前,人数,目的,訪問先部署,訪問先担当者,入室時間,退出時間\n';
+    records.forEach(r=>{
+        csv+=`${r.date},${r.company},${r.name},${r.count},${r.purpose||''},${r.department||''},${r.contact||''},${r.inTime||''},${r.outTime||''}\n`;
+    });
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`visitor_log_${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+});
 document.getElementById("printDate").textContent = new Date().toLocaleDateString();
-loadMonth();
+loadDate();
 </script>
 </body>
 </html>
