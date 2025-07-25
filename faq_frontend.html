@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ Frontend</title>
+    <style>
+        body{font-family:Arial,Helvetica,sans-serif;margin:20px;}
+        section{margin-bottom:20px;}
+        input,textarea{width:100%;padding:6px;margin-top:4px;}
+        button{margin-top:6px;padding:6px 12px;}
+        .question{border:1px solid #ccc;padding:10px;margin:5px 0;}
+        .answers{margin-left:20px;}
+    </style>
+</head>
+<body>
+<h1>FAQ Prototype</h1>
+
+<section id="search-section">
+    <h2>Search Questions</h2>
+    <input id="searchInput" placeholder="Enter search terms">
+    <button id="searchBtn">Search</button>
+    <div id="results"></div>
+</section>
+
+<section id="post-question">
+    <h2>Post Question</h2>
+    <input id="questionText" placeholder="Question text">
+    <input id="questionTags" placeholder="Tags (comma separated)">
+    <button id="postQuestionBtn">Submit Question</button>
+</section>
+
+<section id="post-answer">
+    <h2>Post Answer</h2>
+    <input id="answerQuestionId" placeholder="Question ID">
+    <textarea id="answerText" rows="3" placeholder="Answer text"></textarea>
+    <button id="postAnswerBtn">Submit Answer</button>
+</section>
+
+<script>
+const API_BASE = 'http://localhost:8000';
+
+function e(id){return document.getElementById(id);}
+
+async function search(){
+    const q = e('searchInput').value;
+    const resp = await fetch(`${API_BASE}/search?query=` + encodeURIComponent(q));
+    const data = await resp.json();
+    const results = e('results');
+    results.innerHTML = '';
+    data.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'question';
+        div.textContent = `#${item.id}: ${item.text} [${item.tags.join(', ')}]`;
+        div.onclick = () => loadAnswers(item.id, div);
+        results.appendChild(div);
+    });
+}
+
+async function loadAnswers(id, container){
+    const resp = await fetch(`${API_BASE}/answers/${id}`);
+    const answers = await resp.json();
+    let ansDiv = container.querySelector('.answers');
+    if(!ansDiv){
+        ansDiv = document.createElement('div');
+        ansDiv.className = 'answers';
+        container.appendChild(ansDiv);
+    }
+    ansDiv.innerHTML = '';
+    if(answers.length === 0){
+        ansDiv.textContent = 'No answers yet';
+        return;
+    }
+    answers.forEach(a => {
+        const p = document.createElement('p');
+        const date = new Date(a.timestamp * 1000).toLocaleString();
+        p.textContent = `${date}: ${a.answer}`;
+        ansDiv.appendChild(p);
+    });
+}
+
+async function postQuestion(){
+    const text = e('questionText').value;
+    const tags = e('questionTags').value.split(',').map(t => t.trim()).filter(t => t);
+    await fetch(`${API_BASE}/question`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({text, tags})
+    });
+    alert('Question submitted');
+    e('questionText').value='';
+    e('questionTags').value='';
+}
+
+async function postAnswer(){
+    const question_id = parseInt(e('answerQuestionId').value,10);
+    const answer = e('answerText').value;
+    await fetch(`${API_BASE}/answer`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({question_id, answer})
+    });
+    alert('Answer submitted');
+    e('answerText').value='';
+}
+
+e('searchBtn').onclick = search;
+e('postQuestionBtn').onclick = postQuestion;
+e('postAnswerBtn').onclick = postAnswer;
+</script>
+</body>
+</html>
