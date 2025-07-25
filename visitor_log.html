@@ -25,8 +25,18 @@ header{
     margin-bottom:20px;
     border-radius:8px 8px 0 0;
     text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
 }
 h1{margin:0;font-size:24px;}
+#clock{
+    font-size:18px;
+    letter-spacing:1px;
+    animation:pulse 1s infinite alternate;
+}
+@keyframes pulse{from{opacity:0.5;}to{opacity:1;}}
 form{
     display:flex;
     flex-wrap:wrap;
@@ -59,6 +69,8 @@ table{width:100%;border-collapse:collapse;}
 th,td{border:1px solid #ccc;padding:6px 8px;font-size:14px;}
 th{background:#2c3e50;color:#fff;}
 tr:nth-child(even){background:#f2f2f2;}
+.highlight{animation:fadein 2s forwards;}
+@keyframes fadein{from{background:#ffeaa7;}to{background:inherit;}}
 .no-print button{margin-top:10px;}
 @page{size:A4 landscape;margin:20mm;}
 @media print{
@@ -68,11 +80,16 @@ tr:nth-child(even){background:#f2f2f2;}
     footer{position:fixed;bottom:0;left:0;right:0;text-align:right;padding:5px;font-size:12px;}
     footer::after{content:"Page " counter(page);}
     .no-print{display:none;}
+    #clock{display:none;}
 }
 </style>
 </head>
 <body>
-<header><h1>来訪者受付台帳</h1><div id="printDate"></div></header>
+<header>
+<h1>来訪者受付台帳</h1>
+<div id="printDate"></div>
+<div id="clock"></div>
+</header>
 <main>
 <div class="no-print">
 <form id="entryForm">
@@ -157,9 +174,13 @@ function loadDate(){
     records.forEach(r=>addRow(r));
 }
 
-function addRow(record){
+function addRow(record,highlight=false){
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${record.date||''}</td><td>${record.company}</td><td>${record.name}</td><td>${record.count}</td><td>${record.purpose||''}</td><td>${record.department||''}</td><td>${record.contact||''}</td><td>${record.inTime||''}</td><td>${record.outTime||''}</td>`;
+    if(highlight){
+        tr.classList.add('highlight');
+        setTimeout(()=>tr.classList.remove('highlight'),2000);
+    }
     tbody.appendChild(tr);
 }
 
@@ -176,7 +197,7 @@ form.addEventListener('submit',e=>{
         inTime:form.inTime.value,
         outTime:form.outTime.value
     };
-    addRow(record);
+    addRow(record,true);
     const data=getData();
     const date=currentDate();
     if(!data[date]) data[date]=[];
@@ -212,6 +233,13 @@ document.getElementById('exportCSV').addEventListener('click',()=>{
     URL.revokeObjectURL(url);
 });
 document.getElementById("printDate").textContent = new Date().toLocaleDateString();
+const clockEl=document.getElementById('clock');
+function updateClock(){
+    const now=new Date();
+    clockEl.textContent=now.toLocaleTimeString();
+}
+setInterval(updateClock,1000);
+updateClock();
 loadDate();
 </script>
 </body>
