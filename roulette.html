@@ -202,15 +202,19 @@ stopBtn.addEventListener('click',()=>{
   playFanfare();
   startBtn.disabled=false;
   stopBtn.disabled=true;
-  clearBtn.disabled=false;
+  clearBtn.disabled=true;
 });
 
 clearBtn.addEventListener('click',()=>{
   if(timer){clearInterval(timer);timer=null;}
   roulette.innerHTML='';
   winnersDiv.innerHTML='';
+  namesInput.value='';
+  fileInput.value='';
+  countInput.value='1';
   startBtn.disabled=false;
   stopBtn.disabled=true;
+  clearBtn.disabled=true;
 });
 </script>
 </body>
