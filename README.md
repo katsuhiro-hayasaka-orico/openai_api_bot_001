@@ -12,7 +12,7 @@ Open the file in your browser and click “新規ゲーム” to start.
 
 ## Lottery Roulette
 
-`roulette.html` is a fully client-side lottery tool. Paste or load participant names from a `.txt` file, set the number of winners and click **START** to spin the slots. Names flash with short beeps until you press **STOP**, then the selected winners are highlighted in red with a small fanfare. Use **CLEAR** to reset the screen. Everything runs locally using plain HTML, CSS and JavaScript with the Web Audio API (audio gracefully falls back if unsupported).
+`roulette.html` is a fully client-side lottery tool. Paste or load participant names from a `.txt` file, set the number of winners and click **START** to spin the slots. Names flash with short beeps until you press **STOP**, then the selected winners are highlighted in red with a small fanfare. Use **CLEAR** to reset the participant list and winner count. Everything runs locally using plain HTML, CSS and JavaScript with the Web Audio API (audio gracefully falls back if unsupported).
 
 ## FAQ Prototype
 
