@@ -79,9 +79,9 @@ button{
   <div id="winners"></div>
 </div>
 <script>
-let names=[];
-let timer=null;
-let audioCtx=null;
+let names = [];
+let timer = null;
+let audioCtx = null;
 const fileInput=document.getElementById('fileInput');
 const namesInput=document.getElementById('namesInput');
 const countInput=document.getElementById('winnerCount');
@@ -93,38 +93,43 @@ const winnersDiv=document.getElementById('winners');
 
 function initAudio(){
   if(!audioCtx){
-    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(Ctx){
+      audioCtx = new Ctx();
+    }
   }
 }
 
 function playBeep(){
   initAudio();
-  const osc=audioCtx.createOscillator();
-  const gain=audioCtx.createGain();
-  osc.frequency.value=800;
-  osc.type='square';
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = 800;
+  osc.type = 'square';
   osc.connect(gain);
   gain.connect(audioCtx.destination);
-  gain.gain.setValueAtTime(0.3,audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.05);
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.05);
   osc.start();
   osc.stop(audioCtx.currentTime+0.05);
 }
 
 function playFanfare(){
   initAudio();
-  const freqs=[523.25,659.25,783.99];
-  const duration=0.6;
-  freqs.forEach(f=>{
-    const osc=audioCtx.createOscillator();
-    const gain=audioCtx.createGain();
-    osc.frequency.value=f;
-    osc.type='triangle';
+  if(!audioCtx) return;
+  const freqs = [523.25, 659.25, 783.99];
+  const duration = 0.6;
+  freqs.forEach(f => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = f;
+    osc.type = 'triangle';
     osc.connect(gain);
     gain.connect(audioCtx.destination);
-    gain.gain.setValueAtTime(0.001,audioCtx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.3,audioCtx.currentTime+0.05);
-    gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+duration);
+    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime+0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+duration);
     osc.start();
     osc.stop(audioCtx.currentTime+duration);
   });
@@ -197,15 +202,19 @@ stopBtn.addEventListener('click',()=>{
   playFanfare();
   startBtn.disabled=false;
   stopBtn.disabled=true;
-  clearBtn.disabled=false;
+  clearBtn.disabled=true;
 });
 
 clearBtn.addEventListener('click',()=>{
   if(timer){clearInterval(timer);timer=null;}
   roulette.innerHTML='';
   winnersDiv.innerHTML='';
+  namesInput.value='';
+  fileInput.value='';
+  countInput.value='1';
   startBtn.disabled=false;
   stopBtn.disabled=true;
+  clearBtn.disabled=true;
 });
 </script>
 </body>
