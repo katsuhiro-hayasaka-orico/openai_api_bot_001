@@ -12,7 +12,7 @@ Open the file in your browser and click “新規ゲーム” to start.
 
 ## Lottery Roulette
 
-The repository also provides `roulette.html`, a small local tool for picking random winners with a spinning wheel. Open the file in your browser, enter names line by line, and click "回す" to spin the wheel and reveal the winner. Audio cues are generated using the Web Audio API.
+`roulette.html` is a fully client-side lottery tool. Paste or load participant names from a `.txt` file, set the number of winners and click **START** to spin the slots. Names flash with short beeps until you press **STOP**, then the selected winners are highlighted in red with a small fanfare. Use **CLEAR** to reset the screen. Everything runs locally using plain HTML, CSS and JavaScript with the Web Audio API.
 
 ## FAQ Prototype
 
