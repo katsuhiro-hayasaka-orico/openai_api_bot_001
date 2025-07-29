@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>🎯 多機能版 抽選ルーレット</title>
+<style>
+body{
+  font-family:"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+  background:#f5f7fa;
+  margin:0;
+  padding:40px;
+}
+#container{
+  background:#fff;
+  max-width:700px;
+  margin:auto;
+  padding:20px;
+  border-radius:8px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.1);
+}
+h1{text-align:center;margin-top:0;}
+textarea{
+  width:100%;
+  height:120px;
+  resize:vertical;
+  margin-top:6px;
+}
+#controls{margin:15px 0;text-align:center;}
+button{
+  border:none;
+  color:#fff;
+  padding:8px 16px;
+  margin:0 4px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:1rem;
+}
+#startBtn{background:#3498db;}
+#stopBtn{background:#e74c3c;}
+#clearBtn{background:#95a5a6;}
+#roulette{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+.slot{
+  background:#ecf0f1;
+  min-width:80px;
+  padding:10px 20px;
+  border-radius:4px;
+  font-weight:bold;
+}
+.selected{color:#e74c3c;}
+#winners{display:flex;flex-wrap:wrap;gap:6px;}
+.winner-card{
+  background:#3498db;
+  color:#fff;
+  padding:4px 8px;
+  border-radius:4px;
+}
+</style>
+</head>
+<body>
+<div id="container">
+  <h1>🎯 多機能版 抽選ルーレット</h1>
+  <div>
+    <label>参加者ファイル: <input type="file" id="fileInput" accept=".txt"></label>
+    <textarea id="namesInput" placeholder="名前を改行で入力"></textarea>
+  </div>
+  <div id="controls">
+    <label>当選人数: <input type="number" id="winnerCount" min="1" value="1" style="width:60px;"></label>
+    <button id="startBtn">START</button>
+    <button id="stopBtn" disabled>STOP</button>
+    <button id="clearBtn">CLEAR</button>
+  </div>
+  <div id="roulette"></div>
+  <div id="winners"></div>
+</div>
+<script>
+let names = [];
+let timer = null;
+let audioCtx = null;
+const fileInput=document.getElementById('fileInput');
+const namesInput=document.getElementById('namesInput');
+const countInput=document.getElementById('winnerCount');
+const startBtn=document.getElementById('startBtn');
+const stopBtn=document.getElementById('stopBtn');
+const clearBtn=document.getElementById('clearBtn');
+const roulette=document.getElementById('roulette');
+const winnersDiv=document.getElementById('winners');
+
+function initAudio(){
+  if(!audioCtx){
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if(Ctx){
+      audioCtx = new Ctx();
+    }
+  }
+}
+
+function playBeep(){
+  initAudio();
+  if(!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.frequency.value = 800;
+  osc.type = 'square';
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.05);
+  osc.start();
+  osc.stop(audioCtx.currentTime+0.05);
+}
+
+function playFanfare(){
+  initAudio();
+  if(!audioCtx) return;
+  const freqs = [523.25, 659.25, 783.99];
+  const duration = 0.6;
+  freqs.forEach(f => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = f;
+    osc.type = 'triangle';
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime+0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+duration);
+    osc.start();
+    osc.stop(audioCtx.currentTime+duration);
+  });
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+
+fileInput.addEventListener('change',()=>{
+  const file=fileInput.files[0];
+  if(file){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      namesInput.value=reader.result;
+      fileInput.value='';
+    };
+    reader.readAsText(file,'utf-8');
+  }
+});
+
+startBtn.addEventListener('click',()=>{
+  initAudio();
+  names=namesInput.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(!names.length){
+    alert('参加者名を入力してください');
+    return;
+  }
+  const count=Math.max(1,parseInt(countInput.value)||1);
+  roulette.innerHTML='';
+  for(let i=0;i<count;i++){
+    const div=document.createElement('div');
+    div.className='slot';
+    roulette.appendChild(div);
+  }
+  winnersDiv.innerHTML='';
+  startBtn.disabled=true;
+  stopBtn.disabled=false;
+  clearBtn.disabled=true;
+  const slots=roulette.querySelectorAll('.slot');
+  timer=setInterval(()=>{
+    slots.forEach(s=>{
+      s.textContent=names[Math.floor(Math.random()*names.length)];
+    });
+    playBeep();
+  },100);
+});
+
+stopBtn.addEventListener('click',()=>{
+  if(!timer)return;
+  clearInterval(timer);
+  timer=null;
+  const count=Math.max(1,parseInt(countInput.value)||1);
+  shuffle(names);
+  const winners=names.slice(0,Math.min(count,names.length));
+  const slots=roulette.querySelectorAll('.slot');
+  slots.forEach((s,i)=>{
+    s.textContent=winners[i]||'';
+    s.classList.add('selected');
+  });
+  winners.forEach(name=>{
+    const card=document.createElement('div');
+    card.className='winner-card';
+    card.textContent=name;
+    winnersDiv.appendChild(card);
+  });
+  playFanfare();
+  startBtn.disabled=false;
+  stopBtn.disabled=true;
+  clearBtn.disabled=true;
+});
+
+clearBtn.addEventListener('click',()=>{
+  if(timer){clearInterval(timer);timer=null;}
+  roulette.innerHTML='';
+  winnersDiv.innerHTML='';
+  namesInput.value='';
+  fileInput.value='';
+  countInput.value='1';
+  startBtn.disabled=false;
+  stopBtn.disabled=true;
+  clearBtn.disabled=true;
+});
+</script>
+</body>
+</html>
