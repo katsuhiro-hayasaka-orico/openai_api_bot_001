@@ -2,82 +2,211 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>抽選ルーレット</title>
+<title>🎯 多機能版 抽選ルーレット</title>
 <style>
-body{font-family:"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;margin:0;padding:20px;background:#f5f7fa;text-align:center;}
-#container{max-width:600px;margin:auto;background:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,0.1);}
-textarea{width:100%;height:100px;margin-bottom:10px;}
-canvas{display:block;margin:20px auto;}
-#pointer{width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;border-bottom:30px solid #e74c3c;margin:0 auto;}
-#winner{font-size:1.5em;margin-top:10px;}
+body{
+  font-family:"Segoe UI","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+  background:#f5f7fa;
+  margin:0;
+  padding:40px;
+}
+#container{
+  background:#fff;
+  max-width:700px;
+  margin:auto;
+  padding:20px;
+  border-radius:8px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.1);
+}
+h1{text-align:center;margin-top:0;}
+textarea{
+  width:100%;
+  height:120px;
+  resize:vertical;
+  margin-top:6px;
+}
+#controls{margin:15px 0;text-align:center;}
+button{
+  border:none;
+  color:#fff;
+  padding:8px 16px;
+  margin:0 4px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:1rem;
+}
+#startBtn{background:#3498db;}
+#stopBtn{background:#e74c3c;}
+#clearBtn{background:#95a5a6;}
+#roulette{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:20px;
+  flex-wrap:wrap;
+}
+.slot{
+  background:#ecf0f1;
+  min-width:80px;
+  padding:10px 20px;
+  border-radius:4px;
+  font-weight:bold;
+}
+.selected{color:#e74c3c;}
+#winners{display:flex;flex-wrap:wrap;gap:6px;}
+.winner-card{
+  background:#3498db;
+  color:#fff;
+  padding:4px 8px;
+  border-radius:4px;
+}
 </style>
 </head>
 <body>
 <div id="container">
-<h1>抽選ルーレット</h1>
-<p>参加者を1行ずつ入力してください。</p>
-<textarea id="names" placeholder="名前を改行で入力"></textarea>
-<button id="spin">回す</button>
-<div id="pointer"></div>
-<canvas id="wheel" width="500" height="500"></canvas>
-<div id="winner"></div>
+  <h1>🎯 多機能版 抽選ルーレット</h1>
+  <div>
+    <label>参加者ファイル: <input type="file" id="fileInput" accept=".txt"></label>
+    <textarea id="namesInput" placeholder="名前を改行で入力"></textarea>
+  </div>
+  <div id="controls">
+    <label>当選人数: <input type="number" id="winnerCount" min="1" value="1" style="width:60px;"></label>
+    <button id="startBtn">START</button>
+    <button id="stopBtn" disabled>STOP</button>
+    <button id="clearBtn">CLEAR</button>
+  </div>
+  <div id="roulette"></div>
+  <div id="winners"></div>
 </div>
 <script>
-const colors=["#f94144","#f3722c","#f8961e","#f9844a","#f9c74f","#90be6d","#43aa8b","#577590","#277da1"]; 
-const canvas=document.getElementById('wheel');
-const ctx=canvas.getContext('2d');
-const pointer=document.getElementById('pointer');
-const winnerDiv=document.getElementById('winner');
-const spinBtn=document.getElementById('spin');
-let currentRotation=0;
-function drawWheel(names){
-    const radius=canvas.width/2;
-    const arc=2*Math.PI/names.length;
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    for(let i=0;i<names.length;i++){
-        ctx.beginPath();
-        ctx.moveTo(radius,radius);
-        ctx.fillStyle=colors[i%colors.length];
-        ctx.arc(radius,radius,radius,arc*i,arc*(i+1));
-        ctx.fill();
-        ctx.save();
-        ctx.translate(radius,radius);
-        ctx.rotate(arc*i+arc/2);
-        ctx.textAlign='right';
-        ctx.fillStyle='#fff';
-        ctx.font='bold 16px sans-serif';
-        ctx.fillText(names[i],radius-10,5);
-        ctx.restore();
-    }
+let names=[];
+let timer=null;
+let audioCtx=null;
+const fileInput=document.getElementById('fileInput');
+const namesInput=document.getElementById('namesInput');
+const countInput=document.getElementById('winnerCount');
+const startBtn=document.getElementById('startBtn');
+const stopBtn=document.getElementById('stopBtn');
+const clearBtn=document.getElementById('clearBtn');
+const roulette=document.getElementById('roulette');
+const winnersDiv=document.getElementById('winners');
+
+function initAudio(){
+  if(!audioCtx){
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  }
 }
-function playBeep(duration=100){
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    const osc=ctx.createOscillator();
-    osc.type='sine';
-    osc.frequency.setValueAtTime(600,ctx.currentTime);
-    osc.connect(ctx.destination);
+
+function playBeep(){
+  initAudio();
+  const osc=audioCtx.createOscillator();
+  const gain=audioCtx.createGain();
+  osc.frequency.value=800;
+  osc.type='square';
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  gain.gain.setValueAtTime(0.3,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.05);
+  osc.start();
+  osc.stop(audioCtx.currentTime+0.05);
+}
+
+function playFanfare(){
+  initAudio();
+  const freqs=[523.25,659.25,783.99];
+  const duration=0.6;
+  freqs.forEach(f=>{
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
+    osc.frequency.value=f;
+    osc.type='triangle';
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    gain.gain.setValueAtTime(0.001,audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.3,audioCtx.currentTime+0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+duration);
     osc.start();
-    osc.stop(ctx.currentTime+duration/1000);
-    osc.onended=()=>ctx.close();
+    osc.stop(audioCtx.currentTime+duration);
+  });
 }
-spinBtn.onclick=()=>{
-    const names=document.getElementById('names').value.trim().split(/\n+/).filter(Boolean);
-    if(!names.length){alert('名前を入力してください');return;}
-    drawWheel(names);
-    const rotations=5; // full spins
-    const randomDeg=Math.random()*360;
-    const totalDeg=rotations*360+randomDeg;
-    canvas.style.transition='transform 5s cubic-bezier(0.33,1,0.68,1)';
-    canvas.style.transform=`rotate(${totalDeg+currentRotation}deg)`;
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+}
+
+fileInput.addEventListener('change',()=>{
+  const file=fileInput.files[0];
+  if(file){
+    const reader=new FileReader();
+    reader.onload=()=>{
+      namesInput.value=reader.result;
+      fileInput.value='';
+    };
+    reader.readAsText(file,'utf-8');
+  }
+});
+
+startBtn.addEventListener('click',()=>{
+  initAudio();
+  names=namesInput.value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(!names.length){
+    alert('参加者名を入力してください');
+    return;
+  }
+  const count=Math.max(1,parseInt(countInput.value)||1);
+  roulette.innerHTML='';
+  for(let i=0;i<count;i++){
+    const div=document.createElement('div');
+    div.className='slot';
+    roulette.appendChild(div);
+  }
+  winnersDiv.innerHTML='';
+  startBtn.disabled=true;
+  stopBtn.disabled=false;
+  clearBtn.disabled=true;
+  const slots=roulette.querySelectorAll('.slot');
+  timer=setInterval(()=>{
+    slots.forEach(s=>{
+      s.textContent=names[Math.floor(Math.random()*names.length)];
+    });
     playBeep();
-    setTimeout(()=>{
-        currentRotation=(currentRotation+totalDeg)%360;
-        const slice=360/names.length;
-        const index=Math.floor((360-currentRotation+slice/2)%360/slice);
-        winnerDiv.textContent=`当選者: ${names[index]}`;
-        playBeep(300);
-    },5000);
-};
+  },100);
+});
+
+stopBtn.addEventListener('click',()=>{
+  if(!timer)return;
+  clearInterval(timer);
+  timer=null;
+  const count=Math.max(1,parseInt(countInput.value)||1);
+  shuffle(names);
+  const winners=names.slice(0,Math.min(count,names.length));
+  const slots=roulette.querySelectorAll('.slot');
+  slots.forEach((s,i)=>{
+    s.textContent=winners[i]||'';
+    s.classList.add('selected');
+  });
+  winners.forEach(name=>{
+    const card=document.createElement('div');
+    card.className='winner-card';
+    card.textContent=name;
+    winnersDiv.appendChild(card);
+  });
+  playFanfare();
+  startBtn.disabled=false;
+  stopBtn.disabled=true;
+  clearBtn.disabled=false;
+});
+
+clearBtn.addEventListener('click',()=>{
+  if(timer){clearInterval(timer);timer=null;}
+  roulette.innerHTML='';
+  winnersDiv.innerHTML='';
+  startBtn.disabled=false;
+  stopBtn.disabled=true;
+});
 </script>
 </body>
 </html>
