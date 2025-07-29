@@ -10,6 +10,10 @@ You can choose between Human vs. Human, Human vs. AI, or AI vs. AI modes.
 The built-in AI uses a minimax search with alpha–beta pruning.
 Open the file in your browser and click “新規ゲーム” to start.
 
+## Lottery Roulette
+
+The repository also provides `roulette.html`, a small local tool for picking random winners with a spinning wheel. Open the file in your browser, enter names line by line, and click "回す" to spin the wheel and reveal the winner. Audio cues are generated using the Web Audio API.
+
 ## FAQ Prototype
 
 A small FastAPI backend and simple HTML frontend are included for experimenting with a FAQ system.
