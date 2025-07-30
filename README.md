@@ -24,6 +24,10 @@ A small FastAPI backend and simple HTML frontend are included for experimenting 
 uvicorn faq_api:app --reload
 ```
 
+After starting, opening `http://localhost:8000/` should return a short JSON
+message indicating the API is running. The interactive docs remain available at
+`/docs`.
+
 ### Using the frontend
 
 Open `faq_frontend.html` in your browser. It allows you to search questions, post new questions and answers, and view existing answers using the API.
